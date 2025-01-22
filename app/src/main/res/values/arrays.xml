@@ -9,6 +9,7 @@
         <item>Work</item>
         <item>Personal</item>
         <item>Health</item>
+        <item>School</item>
         <item>Other</item>
     </string-array>
 </resources>
