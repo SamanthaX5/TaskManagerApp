@@ -1,1 +1,30 @@
-{"installed":{"client_id":"362651128575-aom8qoader91dbl8vj0bqfp9ev16ng5v.apps.googleusercontent.com","project_id":"task-manager-app-448622","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs"}}
+{
+  "project_info": {
+    "project_number": "332390320752",
+    "firebase_url": "https://taskmanagerapp-7cf28-default-rtdb.firebaseio.com",
+    "project_id": "taskmanagerapp-7cf28",
+    "storage_bucket": "taskmanagerapp-7cf28.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:332390320752:android:e57e761d9552022822c2b5",
+        "android_client_info": {
+          "package_name": "com.example.taskmanagerapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1nygbs4SSBnTWrw6nugt7ioe7oEwV6CY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

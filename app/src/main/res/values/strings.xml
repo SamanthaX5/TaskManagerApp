@@ -31,6 +31,7 @@
     <string name="task_description">Enter Task Description</string>
     <string name="update_task">Update Task</string>
     <string name="save_task">Save Task</string>
+    <string name="sign_in">Sign In</string>
 
     <!-- Error Messages -->
     <string name="error_title_empty">Task title cannot be empty</string>

@@ -47,4 +47,17 @@
         app:tint="@android:color/white"
         app:srcCompat="@drawable/ic_add" />
 
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabGoogleSignIn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:contentDescription="@string/sign_in"
+        android:elevation="6dp"
+        app:backgroundTint="@android:color/white"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:srcCompat="@drawable/ic_google"
+        app:tint="@android:color/transparent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
