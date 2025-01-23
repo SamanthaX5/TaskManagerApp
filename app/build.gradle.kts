@@ -54,4 +54,8 @@ dependencies {
     implementation("com.google.android.material:material:1.9.0")
     implementation("com.google.firebase:firebase-database-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation("com.google.android.gms:play-services-auth:20.6.0")
+    implementation("com.google.api-client:google-api-client-android:1.34.0")
+    implementation("com.google.api-client:google-api-client-gson:1.34.0")
+    implementation("com.google.apis:google-api-services-calendar:v3-rev305-1.25.0")
 }

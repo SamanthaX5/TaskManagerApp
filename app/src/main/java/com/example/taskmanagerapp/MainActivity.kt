@@ -10,8 +10,21 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.Scopes
+import com.google.android.gms.common.SignInButton
+import com.google.android.gms.common.api.ApiException
+import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
+import com.google.api.client.googleapis.json.GoogleJsonResponseException
+import com.google.api.client.googleapis.services.json.AbstractGoogleJsonClientRequest
+import com.google.api.client.json.gson.GsonFactory
+import com.google.api.client.util.DateTime
+import com.google.api.services.calendar.Calendar
+import com.google.api.services.calendar.model.Event
+import com.google.api.services.calendar.model.EventDateTime
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -24,8 +37,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var dbHelper: TaskDatabaseHelper
     private val taskList: MutableList<Task> = mutableListOf()
 
+    private lateinit var googleSignInClient: GoogleSignInClient
     private val firebaseDatabase = FirebaseDatabase.getInstance()
-    private var isSyncing = false
+    private val RC_SIGN_IN = 100
 
     companion object {
         const val NEW_TASK_EXTRA = "NEW_TASK"
@@ -48,6 +62,7 @@ class MainActivity : AppCompatActivity() {
             else -> super.onOptionsItemSelected(item)
         }
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -72,125 +87,92 @@ class MainActivity : AppCompatActivity() {
         // Load tasks and sync with Firebase
         loadTasksFromDatabase()
         setupFirebaseListener()
+
+        // Initialize Google Sign-In
+        initializeGoogleSignIn()
     }
 
     /**
-     * Load tasks from SQLite database.
+     * Initialize Google Sign-In
      */
-    private fun loadTasksFromDatabase() {
-        taskList.clear()
-        taskList.addAll(dbHelper.getAllTasks())
-        taskAdapter.setTasks(taskList)
-    }
+    private fun initializeGoogleSignIn() {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .requestScopes(com.google.android.gms.common.api.Scope(Scopes.CALENDAR))
+            .build()
 
-    /**
-     * Setup Firebase listener to update tasks in real-time.
-     */
-    private fun setupFirebaseListener() {
-        firebaseDatabase.getReference("tasks")
-            .addValueEventListener(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    taskList.clear()
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
 
-                    for (taskSnapshot in snapshot.children) {
-                        val task = taskSnapshot.getValue(Task::class.java)
-                        if (task != null && task.firebaseKey.isNotEmpty()) {
-                            dbHelper.upsertTask(task) // Sync with local SQLite
-                        } else {
-                            Log.e(TAG, "Task missing Firebase key: $task")
-                        }
-                    }
-
-                    taskList.addAll(dbHelper.getAllTasks()) // Load updated tasks from SQLite
-                    taskAdapter.setTasks(taskList)
-                    taskAdapter.notifyDataSetChanged()
-                    Log.d(TAG, "Tasks updated from Firebase")
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e(TAG, "Firebase listener cancelled: ${error.message}")
-                    Toast.makeText(this@MainActivity, "Failed to load tasks: ${error.message}", Toast.LENGTH_SHORT).show()
-                }
-            })
-    }
-
-    /**
-     * Navigate to AddTaskActivity.
-     */
-    private fun navigateToAddTask() {
-        val intent = Intent(this, AddTaskActivity::class.java)
-        startActivityForResult(intent, 1)
-    }
-
-    /**
-     * Show options (edit/delete) for a task.
-     */
-    private fun showTaskOptions(task: Task, position: Int) {
-        AlertDialog.Builder(this)
-            .setTitle("Select an option")
-            .setItems(arrayOf("Edit", "Delete")) { _, which ->
-                when (which) {
-                    0 -> navigateToEditTask(task)
-                    1 -> deleteTask(task, position)
-                }
-            }
-            .show()
-    }
-
-    /**
-     * Navigate to EditTaskActivity.
-     */
-    private fun navigateToEditTask(task: Task) {
-        val intent = Intent(this, EditTaskActivity::class.java).apply {
-            putExtra(EDIT_TASK_EXTRA, task)
+        val btnGoogleSignIn = findViewById<SignInButton>(R.id.sign_in)
+        btnGoogleSignIn.setOnClickListener {
+            val signInIntent = googleSignInClient.signInIntent
+            startActivityForResult(signInIntent, RC_SIGN_IN)
         }
-        startActivityForResult(intent, 2)
     }
 
-    /**
-     * Delete a task from Firebase and SQLite.
-     */
-    private fun deleteTask(task: Task, position: Int) {
-        dbHelper.deleteTask(task.id)
-        taskList.removeAt(position)
-        taskAdapter.notifyItemRemoved(position)
-
-        firebaseDatabase.getReference("tasks").child(task.firebaseKey).removeValue()
-            .addOnSuccessListener {
-                Toast.makeText(this, "Task deleted successfully", Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener {
-                Toast.makeText(this, "Failed to delete task from Firebase", Toast.LENGTH_SHORT).show()
-            }
-    }
-
-    /**
-     * Handle result from AddTaskActivity and EditTaskActivity.
-     */
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode == RESULT_OK) {
-            when (requestCode) {
-                1 -> {
-                    val newTask = data?.getParcelableExtra<Task>(NEW_TASK_EXTRA)
-                    newTask?.let {
-                        dbHelper.upsertTask(it)
-                        taskList.add(it)
-                        taskAdapter.notifyItemInserted(taskList.size - 1)
-                    }
-                }
-                2 -> {
-                    val updatedTask = data?.getParcelableExtra<Task>(EDIT_TASK_EXTRA)
-                    updatedTask?.let {
-                        dbHelper.upsertTask(it)
-                        val index = taskList.indexOfFirst { task -> task.id == it.id }
-                        if (index != -1) {
-                            taskList[index] = it
-                            taskAdapter.notifyItemChanged(index)
-                        }
-                    }
-                }
-            }
+        if (requestCode == RC_SIGN_IN) {
+            val task: Task<GoogleSignInAccount> = GoogleSignIn.getSignedInAccountFromIntent(data)
+            handleSignInResult(task)
         }
     }
+
+    private fun handleSignInResult(task: Task<GoogleSignInAccount>) {
+        try {
+            val account = task.getResult(ApiException::class.java)
+            if (account != null) {
+                Toast.makeText(this, "Sign-In Successful: ${account.email}", Toast.LENGTH_LONG).show()
+                syncWithGoogleCalendar(account)
+            }
+        } catch (e: ApiException) {
+            Toast.makeText(this, "Sign-In Failed: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /**
+     * Sync with Google Calendar
+     */
+    private fun syncWithGoogleCalendar(account: GoogleSignInAccount) {
+        val credential = GoogleAccountCredential.usingOAuth2(
+            this, listOf("https://www.googleapis.com/auth/calendar")
+        )
+        credential.selectedAccount = account.account
+
+        val calendarService = Calendar.Builder(
+            com.google.api.client.http.javanet.NetHttpTransport(),
+            GsonFactory.getDefaultInstance(),
+            credential
+        )
+            .setApplicationName("TaskManagerApp")
+            .build()
+
+        val event = Event()
+            .setSummary("TaskManager Event")
+            .setDescription("This is a test event added by TaskManager")
+
+        val startDateTime = EventDateTime()
+            .setDateTime(DateTime("2025-01-24T10:00:00-05:00"))
+            .setTimeZone("America/New_York")
+        event.start = startDateTime
+
+        val endDateTime = EventDateTime()
+            .setDateTime(DateTime("2025-01-24T11:00:00-05:00"))
+            .setTimeZone("America/New_York")
+        event.end = endDateTime
+
+        Thread {
+            try {
+                calendarService.events().insert("primary", event).execute()
+                runOnUiThread {
+                    Toast.makeText(this, "Event added to Google Calendar", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: GoogleJsonResponseException) {
+                runOnUiThread {
+                    Toast.makeText(this, "Failed to add event: ${e.details.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }.start()
+    }
 }
+
