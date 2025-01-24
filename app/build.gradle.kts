@@ -38,24 +38,25 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation(libs.material)
-    implementation(libs.androidx.activity)
+    // Core libraries
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.appcompat.v170)
+    implementation(libs.material.v1120)
+
+    // Firebase libraries
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics.ktx)
     implementation(libs.firebase.database.ktx)
+
+    // Testing libraries
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
-    implementation(libs.firebase.analytics)
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.9.0")
-    implementation("com.google.firebase:firebase-database-ktx")
-    implementation("com.google.firebase:firebase-analytics-ktx")
-    implementation("com.google.android.gms:play-services-auth:20.6.0")
-    implementation("com.google.api-client:google-api-client-android:1.34.0")
-    implementation("com.google.api-client:google-api-client-gson:1.34.0")
-    implementation("com.google.apis:google-api-services-calendar:v3-rev305-1.25.0")
+
+    // Google APIs and Services
+    implementation(libs.play.services.auth)
+    implementation(libs.google.api.client.android)
+    implementation(libs.google.api.client.gson)
+    implementation(libs.google.api.services.calendar)
 }
+
