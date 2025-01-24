@@ -58,5 +58,6 @@ dependencies {
     implementation(libs.google.api.client.android)
     implementation(libs.google.api.client.gson)
     implementation(libs.google.api.services.calendar)
+    implementation("com.google.http-client:google-http-client-gson:1.41.7")
 }
 

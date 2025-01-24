@@ -8,6 +8,7 @@ import android.view.MenuItem
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -18,17 +19,20 @@ import com.google.android.gms.common.Scopes
 import com.google.android.gms.common.SignInButton
 import com.google.android.gms.common.api.ApiException
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
-import com.google.api.client.googleapis.json.GoogleJsonResponseException
-import com.google.api.client.googleapis.services.json.AbstractGoogleJsonClientRequest
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.client.util.DateTime
 import com.google.api.services.calendar.Calendar
 import com.google.api.services.calendar.model.Event
 import com.google.api.services.calendar.model.EventDateTime
+import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
@@ -92,9 +96,6 @@ class MainActivity : AppCompatActivity() {
         initializeGoogleSignIn()
     }
 
-    /**
-     * Initialize Google Sign-In
-     */
     private fun initializeGoogleSignIn() {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
@@ -113,12 +114,12 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == RC_SIGN_IN) {
-            val task: Task<GoogleSignInAccount> = GoogleSignIn.getSignedInAccountFromIntent(data)
+            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
             handleSignInResult(task)
         }
     }
 
-    private fun handleSignInResult(task: Task<GoogleSignInAccount>) {
+    private fun handleSignInResult(task: com.google.android.gms.tasks.Task<GoogleSignInAccount>) {
         try {
             val account = task.getResult(ApiException::class.java)
             if (account != null) {
@@ -126,13 +127,11 @@ class MainActivity : AppCompatActivity() {
                 syncWithGoogleCalendar(account)
             }
         } catch (e: ApiException) {
+            Log.e(TAG, "Sign-In Failed: ${e.statusCode}", e)
             Toast.makeText(this, "Sign-In Failed: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
-    /**
-     * Sync with Google Calendar
-     */
     private fun syncWithGoogleCalendar(account: GoogleSignInAccount) {
         val credential = GoogleAccountCredential.usingOAuth2(
             this, listOf("https://www.googleapis.com/auth/calendar")
@@ -147,32 +146,105 @@ class MainActivity : AppCompatActivity() {
             .setApplicationName("TaskManagerApp")
             .build()
 
-        val event = Event()
-            .setSummary("TaskManager Event")
-            .setDescription("This is a test event added by TaskManager")
-
-        val startDateTime = EventDateTime()
-            .setDateTime(DateTime("2025-01-24T10:00:00-05:00"))
-            .setTimeZone("America/New_York")
-        event.start = startDateTime
-
-        val endDateTime = EventDateTime()
-            .setDateTime(DateTime("2025-01-24T11:00:00-05:00"))
-            .setTimeZone("America/New_York")
-        event.end = endDateTime
-
-        Thread {
+        lifecycleScope.launch {
             try {
-                calendarService.events().insert("primary", event).execute()
-                runOnUiThread {
-                    Toast.makeText(this, "Event added to Google Calendar", Toast.LENGTH_SHORT).show()
+                val event = Event()
+                    .setSummary("TaskManager Event")
+                    .setDescription("This is a test event added by TaskManager")
+
+                val startDateTime = EventDateTime()
+                    .setDateTime(DateTime("2025-01-24T10:00:00-05:00"))
+                    .setTimeZone("America/New_York")
+                event.start = startDateTime
+
+                val endDateTime = EventDateTime()
+                    .setDateTime(DateTime("2025-01-24T11:00:00-05:00"))
+                    .setTimeZone("America/New_York")
+                event.end = endDateTime
+
+                withContext(Dispatchers.IO) {
+                    calendarService.events().insert("primary", event).execute()
                 }
-            } catch (e: GoogleJsonResponseException) {
-                runOnUiThread {
-                    Toast.makeText(this, "Failed to add event: ${e.details.message}", Toast.LENGTH_LONG).show()
+
+                Toast.makeText(this@MainActivity, "Event added to Google Calendar", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to sync with Google Calendar", e)
+                Toast.makeText(this@MainActivity, "Failed to add event: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun loadTasksFromDatabase() {
+        taskList.clear()
+        taskList.addAll(dbHelper.getAllTasks())
+        taskAdapter.setTasks(taskList)
+    }
+
+    private fun setupFirebaseListener() {
+        firebaseDatabase.getReference("tasks")
+            .addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    taskList.clear()
+
+                    for (taskSnapshot in snapshot.children) {
+                        val task = taskSnapshot.getValue(Task::class.java)
+                        if (task != null && task.firebaseKey.isNotEmpty()) {
+                            dbHelper.upsertTask(task)
+                        } else {
+                            Log.e(TAG, "Task missing Firebase key: $task")
+                        }
+                    }
+
+                    taskList.addAll(dbHelper.getAllTasks())
+                    taskAdapter.setTasks(taskList)
+                    taskAdapter.notifyDataSetChanged()
+                    Log.d(TAG, "Tasks updated from Firebase")
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "Firebase listener cancelled: ${error.message}")
+                    Toast.makeText(this@MainActivity, "Failed to load tasks: ${error.message}", Toast.LENGTH_SHORT).show()
+                }
+            })
+    }
+
+    private fun navigateToAddTask() {
+        val intent = Intent(this, AddTaskActivity::class.java)
+        startActivity(intent)
+    }
+
+    private fun showTaskOptions(task: Task, position: Int) {
+        AlertDialog.Builder(this)
+            .setTitle("Select an option")
+            .setItems(arrayOf("Edit", "Delete")) { _, which ->
+                when (which) {
+                    0 -> navigateToEditTask(task)
+                    1 -> deleteTask(task, position)
                 }
             }
-        }.start()
+            .show()
+    }
+
+    private fun navigateToEditTask(task: Task) {
+        val intent = Intent(this, EditTaskActivity::class.java).apply {
+            putExtra(EDIT_TASK_EXTRA, task)
+        }
+        startActivity(intent)
+    }
+
+    private fun deleteTask(task: Task, position: Int) {
+        dbHelper.deleteTask(task.id)
+        taskList.removeAt(position)
+        taskAdapter.notifyItemRemoved(position)
+
+        firebaseDatabase.getReference("tasks").child(task.firebaseKey).removeValue()
+            .addOnSuccessListener {
+                Toast.makeText(this, "Task deleted successfully", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Failed to delete task from Firebase", Toast.LENGTH_SHORT).show()
+            }
     }
 }
+
 
