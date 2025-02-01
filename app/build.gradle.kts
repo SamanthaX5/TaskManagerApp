@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     id("com.google.gms.google-services")
-    id ("kotlin-parcelize")
+    id("kotlin-parcelize")
 }
 
 android {
@@ -55,9 +55,12 @@ dependencies {
 
     // Google APIs and Services
     implementation(libs.play.services.auth)
-    implementation(libs.google.api.client.android)
-    implementation(libs.google.api.client.gson)
-    implementation(libs.google.api.services.calendar)
-    implementation("com.google.http-client:google-http-client-gson:1.41.7")
+    implementation(libs.google.http.client.gson)
+
+    // Retrofit for Google Calendar API
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+    implementation(libs.logging.interceptor)
 }
+
 
