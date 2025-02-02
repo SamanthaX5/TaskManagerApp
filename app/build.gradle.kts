@@ -28,39 +28,54 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
+
     kotlinOptions {
         jvmTarget = "1.8"
     }
 }
 
 dependencies {
-    // Core libraries
+    // Core Android Libraries
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.appcompat.v170)
     implementation(libs.material.v1120)
 
-    // Firebase libraries
+    // Firebase Libraries
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics.ktx)
     implementation(libs.firebase.database.ktx)
 
-    // Testing libraries
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
+    // Google Sign-In
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
 
-    // Google APIs and Services
-    implementation(libs.play.services.auth)
-    implementation(libs.google.http.client.gson)
+    // Google API Client Libraries (Including Calendar API)
+    implementation("com.google.api-client:google-api-client:1.31.2")
+    implementation("com.google.api-client:google-api-client-android:1.31.2")
+    implementation("com.google.api-client:google-api-client-gson:1.31.2")
+    implementation("com.google.http-client:google-http-client-gson:1.42.2")
+    implementation("com.google.auth:google-auth-library-oauth2-http:1.17.0")
+    implementation("com.google.oauth-client:google-oauth-client-jetty:1.34.1")
+    implementation("com.google.apis:google-api-services-calendar:v3-rev305-1.32.1") {
+        exclude(group = "org.apache.httpcomponents", module = "httpclient")
+    }
 
-    // Retrofit for Google Calendar API
+    // Networking (Retrofit for API Calls)
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
     implementation(libs.logging.interceptor)
+
+    // Testing Libraries
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
 }
+
+
+
 
 

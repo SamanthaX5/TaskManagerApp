@@ -41,4 +41,6 @@
     <string name="sync_success">Tasks synced successfully</string>
     <string name="sync_failed">Sync failed. Please try again.</string>
     <string name="firebase_missing_key">Firebase key is missing for a task.</string>
+
+    <string name="default_web_client_id">332390320752-irjg2qdtbiukbee4r19irr0o5edmhus0.apps.googleusercontent.com</string>
 </resources>

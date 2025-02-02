@@ -35,6 +35,10 @@
         <activity
             android:name=".EditTaskActivity"
             android:exported="true" />
+
+        <meta-data
+            android:name="com.google.android.gms.auth.api.signin"
+            android:value="@string/default_web_client_id"/>
     </application>
 
 </manifest>

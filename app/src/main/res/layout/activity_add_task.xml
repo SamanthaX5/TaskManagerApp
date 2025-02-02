@@ -1,31 +1,35 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:padding="16dp"
     android:background="@color/backgroundLight">
 
+    <!-- Task Title Input -->
     <EditText
         android:id="@+id/inputTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="@string/task_title"
+        android:hint="Enter Task Title"
         android:inputType="text"
         android:padding="12dp"
         android:background="@drawable/edittext_background" />
 
+    <!-- Task Description Input -->
     <EditText
         android:id="@+id/inputDescription"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="@string/task_description"
+        android:hint="Enter Task Description"
         android:inputType="textMultiLine"
         android:padding="12dp"
         android:background="@drawable/edittext_background"
         android:minLines="3"
         android:layout_marginTop="8dp" />
 
+    <!-- Task Priority Dropdown -->
     <Spinner
         android:id="@+id/inputPriority"
         android:layout_width="match_parent"
@@ -36,9 +40,9 @@
         android:spinnerMode="dropdown"
         android:padding="8dp"
         android:dropDownVerticalOffset="16dp"
-        android:layout_gravity="center"
         android:entries="@array/priority_options" />
 
+    <!-- Task Category Dropdown -->
     <Spinner
         android:id="@+id/inputCategory"
         android:layout_width="match_parent"
@@ -48,24 +52,45 @@
         android:spinnerMode="dropdown"
         android:padding="8dp"
         android:dropDownVerticalOffset="16dp"
-        android:layout_gravity="center"
         android:entries="@array/category_options" />
+
+    <!-- Task Date Selector -->
+    <Button
+        android:id="@+id/buttonSelectDate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select Date"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/button_background"
+        android:padding="12dp"
+        android:textColor="@android:color/black"
+        android:textSize="16sp"
+        android:gravity="center"/>
+
+    <!-- Task Time Selector -->
+    <Button
+        android:id="@+id/buttonSelectTime"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select Time"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/button_background"
+        android:padding="12dp"
+        android:textColor="@android:color/black"
+        android:textSize="16sp"
+        android:gravity="center"/>
+
+    <!-- Save Task Button -->
     <Button
         android:id="@+id/btnSaveTask"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
         android:background="@drawable/button_background"
         android:padding="12dp"
-        android:text="@string/save_task"
+        android:text="Save Task"
         android:textColor="@android:color/black"
         android:textSize="16sp"
-        android:gravity="center"
-        app:layout_constraintTop_toBottomOf="@+id/yourLastInputField"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
+        android:gravity="center"/>
 </LinearLayout>

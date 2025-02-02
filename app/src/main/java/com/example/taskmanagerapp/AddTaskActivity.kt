@@ -26,11 +26,12 @@ class AddTaskActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_add_task)
 
-        titleEditText = findViewById(R.id.editTextTitle)
-        descriptionEditText = findViewById(R.id.editTextDescription)
-        dateButton = findViewById(R.id.buttonSelectDate)
-        timeButton = findViewById(R.id.buttonSelectTime)
-        saveButton = findViewById(R.id.buttonSaveTask)
+        // Match IDs with activity_add_task.xml
+        titleEditText = findViewById(R.id.inputTitle)  // ✅ Fixed ID
+        descriptionEditText = findViewById(R.id.inputDescription)  // ✅ Fixed ID
+        dateButton = findViewById(R.id.buttonSelectDate)  // ✅ Fixed ID
+        timeButton = findViewById(R.id.buttonSelectTime)  // ✅ Fixed ID
+        saveButton = findViewById(R.id.btnSaveTask)  // ✅ Fixed ID
 
         dateButton.setOnClickListener { showDatePicker() }
         timeButton.setOnClickListener { showTimePicker() }
@@ -58,44 +59,8 @@ class AddTaskActivity : AppCompatActivity() {
     }
 
     private fun saveTask() {
-        val title = titleEditText.text.toString()
-        val description = descriptionEditText.text.toString()
+        val title = titleEditText
 
-        if (title.isEmpty() || selectedDate.isEmpty() || selectedTime.isEmpty()) {
-            Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
-            return
-        }
+    }}
 
-        val taskDateTime = "$selectedDate $selectedTime"
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-        val date = dateFormat.parse(taskDateTime)
-        val startDateTime = DateTime(date)
-        val endDateTime = DateTime(date.time + 3600000) // Assume task duration = 1 hour
-
-        // Ask user if they want to add the task to Google Calendar
-        Toast.makeText(this, "Task saved. Adding to Google Calendar...", Toast.LENGTH_SHORT).show()
-
-        Thread {
-            try {
-                GoogleCalendarService.addEvent(
-                    summary = title,
-                    location = "No location",
-                    description = description,
-                    startDateTime = startDateTime,
-                    endDateTime = endDateTime
-                )
-                runOnUiThread {
-                    Toast.makeText(this, "Task added to Google Calendar!", Toast.LENGTH_LONG).show()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                runOnUiThread {
-                    Toast.makeText(this, "Error adding task to Google Calendar", Toast.LENGTH_LONG).show()
-                }
-            }
-        }.start()
-
-        finish() // Close the activity after saving
-    }
-}
 
