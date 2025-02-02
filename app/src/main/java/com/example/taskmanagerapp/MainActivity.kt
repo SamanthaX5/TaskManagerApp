@@ -11,24 +11,20 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.taskmanagerapp.services.GoogleCalendarService
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.SignInButton
 import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.tasks.Task
-import com.google.api.services.calendar.Calendar
-import com.google.api.services.calendar.model.Event
-import com.google.api.services.calendar.model.EventDateTime
+import com.google.api.client.util.DateTime
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.database.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.*
-
 
 class MainActivity : AppCompatActivity() {
 
@@ -47,25 +43,12 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "MainActivity"
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.main_menu, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_settings -> {
-                val intent = Intent(this, SettingsActivity::class.java)
-                startActivity(intent)
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Initialize Google Calendar API
+        GoogleCalendarService.init(this)
 
         // Initialize toolbar
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
@@ -95,13 +78,12 @@ class MainActivity : AppCompatActivity() {
     private fun initializeGoogleSignIn() {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
-            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestIdToken(getString(R.string.default_web_client_id))  // ✅ FIXED
             .build()
-
-        googleSignInClient = GoogleSignIn.getClient(this, gso)
 
         val btnGoogleSignIn = findViewById<SignInButton>(R.id.sign_in)
         btnGoogleSignIn.setOnClickListener {
+            Log.d(TAG, "Google Sign-In Button Clicked")
             val signInIntent = googleSignInClient.signInIntent
             startActivityForResult(signInIntent, RC_SIGN_IN)
         }
@@ -128,44 +110,32 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun syncWithGoogleCalendar(account: GoogleSignInAccount) {
-        val credential = GoogleAccountCredential.usingOAuth2(
-            this, listOf("https://www.googleapis.com/auth/calendar")
-        )
-        credential.selectedAccount = account.account
+    private fun showTaskOptions(task: Task, position: Int) {
+        AlertDialog.Builder(this)
+            .setTitle("Select an option")
+            .setItems(arrayOf("Edit", "Delete")) { _, which ->
+                when (which) {
+                    0 -> navigateToEditTask(task)
+                    1 -> deleteTask(task, position)
+                }
+            }
+            .show()
+    }
 
-        val calendarService = Calendar.Builder(
-            com.google.api.client.http.javanet.NetHttpTransport(),
-            GsonFactory.getDefaultInstance(),
-            credential
-        )
-            .setApplicationName("TaskManagerApp")
-            .build()
+    private fun syncWithGoogleCalendar(account: GoogleSignInAccount) {
+        GoogleCalendarService.init(this)
 
         lifecycleScope.launch {
             try {
-                val event = Event()
-                    .setSummary("TaskManager Event")
-                    .setDescription("This is a test event added by TaskManager")
+                val event = GoogleCalendarService.addEvent(
+                    "TaskManager Event", "Online", "Test event",
+                    DateTime("2025-01-24T10:00:00-05:00"),
+                    DateTime("2025-01-24T11:00:00-05:00")
+                )
 
-                val startDateTime = EventDateTime()
-                    .setDateTime(DateTime("2025-01-24T10:00:00-05:00"))
-                    .setTimeZone("America/New_York")
-                event.start = startDateTime
-
-                val endDateTime = EventDateTime()
-                    .setDateTime(DateTime("2025-01-24T11:00:00-05:00"))
-                    .setTimeZone("America/New_York")
-                event.end = endDateTime
-
-                withContext(Dispatchers.IO) {
-                    calendarService.events().insert("primary", event).execute()
-                }
-
-                Toast.makeText(this@MainActivity, "Event added to Google Calendar", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "Event added: ${event?.summary}", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to sync with Google Calendar", e)
-                Toast.makeText(this@MainActivity, "Failed to add event: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -181,66 +151,37 @@ class MainActivity : AppCompatActivity() {
             .addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     taskList.clear()
-
                     for (taskSnapshot in snapshot.children) {
                         val task = taskSnapshot.getValue(Task::class.java)
-                        if (task != null && task.firebaseKey.isNotEmpty()) {
-                            dbHelper.upsertTask(task)
-                        } else {
-                            Log.e(TAG, "Task missing Firebase key: $task")
-                        }
+                        task?.let { taskList.add(it) }
                     }
-
-                    taskList.addAll(dbHelper.getAllTasks())
                     taskAdapter.setTasks(taskList)
                     taskAdapter.notifyDataSetChanged()
-                    Log.d(TAG, "Tasks updated from Firebase")
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e(TAG, "Firebase listener cancelled: ${error.message}")
-                    Toast.makeText(this@MainActivity, "Failed to load tasks: ${error.message}", Toast.LENGTH_SHORT).show()
                 }
             })
     }
 
     private fun navigateToAddTask() {
-        val intent = Intent(this, AddTaskActivity::class.java)
-        startActivity(intent)
-    }
-
-    private fun showTaskOptions(task: Task, position: Int) {
-        AlertDialog.Builder(this)
-            .setTitle("Select an option")
-            .setItems(arrayOf("Edit", "Delete")) { _, which ->
-                when (which) {
-                    0 -> navigateToEditTask(task)
-                    1 -> deleteTask(task, position)
-                }
-            }
-            .show()
+        startActivity(Intent(this, AddTaskActivity::class.java))
     }
 
     private fun navigateToEditTask(task: Task) {
-        val intent = Intent(this, EditTaskActivity::class.java).apply {
+        startActivity(Intent(this, EditTaskActivity::class.java).apply {
             putExtra(EDIT_TASK_EXTRA, task)
-        }
-        startActivity(intent)
+        })
     }
 
     private fun deleteTask(task: Task, position: Int) {
         dbHelper.deleteTask(task.id)
         taskList.removeAt(position)
         taskAdapter.notifyItemRemoved(position)
-
-        firebaseDatabase.getReference("tasks").child(task.firebaseKey).removeValue()
-            .addOnSuccessListener {
-                Toast.makeText(this, "Task deleted successfully", Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener {
-                Toast.makeText(this, "Failed to delete task from Firebase", Toast.LENGTH_SHORT).show()
-            }
     }
 }
+
+
 
 
